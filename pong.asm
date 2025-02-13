@@ -2,36 +2,45 @@
 .STACK 100
 
 .DATA
-    BALL_X DW 50   ; Initial X-coordinate (somewhere visible)
-    BALL_Y DW 50   ; Initial Y-coordinate
+    TIME_AUX DB 0
+
+    BALL_X DW 50    ; Initial X-coordinate (somewhere visible)
+    BALL_Y DW 50    ; Initial Y-coordinate
     BALL_SIZE DW 10 ; Ball size (width and height)
+    BALL_VELOCITY_X DW 05H
+    BALL_VELOCITY_Y DW 02H
+
+    SCREEN_WIDTH DW 320
+    SCREEN_HEIGHT DW 200
 
 .CODE
 MAIN:
-    ; Initialize Data and Stack Segments
+    ; Initialize Data Segment
     MOV AX, @DATA
     MOV DS, AX
 
-    MOV AX, @STACK
-    MOV SS, AX
-
     ; Set Video Mode 13h (320x200 256 colors)
-    MOV AH, 00H
-    MOV AL, 13H
-    INT 10H
+    
+    CALL CLEAR_SCREEN
+
+CHECK_TIME:
+    ; GET SYSTEM TIME
+    MOV AH, 2CH
+    INT 21H
+
+    ; COMPARE CURRENT TIME TO LAST SAVED TIME
+    CMP DL, TIME_AUX
+    JE CHECK_TIME  ; If time has not changed, wait
+
+    MOV TIME_AUX, DL
+
+    CALL CLEAR_SCREEN
+
+    CALL MOVE_BALL
 
     CALL DRAW_BALL
 
-    ; Wait for keypress and exit
-    MOV AH, 0
-    INT 16H
-
-    ; Restore text mode (03h)
-    MOV AH, 00H
-    MOV AL, 03H
-    INT 10H
-
-    RET
+    JMP CHECK_TIME  ; Keep updating (infinite loop)
 
 DRAW_BALL PROC NEAR
     ; Outer loop for Y-coordinate
@@ -60,5 +69,21 @@ DRAW_HORIZONTAL:
 
     RET
 DRAW_BALL ENDP
+
+MOVE_BALL PROC NEAR
+    MOV AX, BALL_VELOCITY_X
+    ADD BALL_X, AX
+
+    MOV AX, BALL_VELOCITY_Y
+    ADD BALL_Y, AX 
+MOVE_BALL ENDP
+
+
+CLEAR_SCREEN PROC NEAR
+    MOV AH, 00H
+    MOV AL, 13H
+    INT 10H
+    RET
+CLEAR_SCREEN ENDP
 
 END MAIN
