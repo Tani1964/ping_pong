@@ -67,8 +67,9 @@ CHECK_TIME:
     CALL CLEAR_SCREEN
 
     CALL MOVE_BALL
-
     CALL DRAW_BALL
+
+    CALL DRAW_PADDLES
 
     JMP CHECK_TIME  ; Keep updating (infinite loop)
 
@@ -99,6 +100,58 @@ DRAW_HORIZONTAL:
 
     RET
 DRAW_BALL ENDP
+
+DRAW_PADDLES PROC NEAR
+		
+		MOV CX,PADDLE_LEFT_X 			 ;set the initial column (X)
+		MOV DX,PADDLE_LEFT_Y 			 ;set the initial line (Y)
+		
+		DRAW_PADDLE_LEFT_HORIZONTAL:
+			MOV AH,0Ch 					 ;set the configuration to writing a pixel
+			MOV AL,0Fh 					 ;choose white as color
+			MOV BH,00h 					 ;set the page number 
+			INT 10h    					 ;execute the configuration
+			
+			INC CX     				 	 ;CX = CX + 1
+			MOV AX,CX         			 ;CX - PADDLE_LEFT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
+			SUB AX,PADDLE_LEFT_X
+			CMP AX,PADDLE_WIDTH
+			JNG DRAW_PADDLE_LEFT_HORIZONTAL
+			
+			MOV CX,PADDLE_LEFT_X 		 ;the CX register goes back to the initial column
+			INC DX       				 ;we advance one line
+			
+			MOV AX,DX            	     ;DX - PADDLE_LEFT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
+			SUB AX,PADDLE_LEFT_Y
+			CMP AX,PADDLE_HEIGHT
+			JNG DRAW_PADDLE_LEFT_HORIZONTAL
+			
+			
+		MOV CX,PADDLE_RIGHT_X 			 ;set the initial column (X)
+		MOV DX,PADDLE_RIGHT_Y 			 ;set the initial line (Y)
+		
+		DRAW_PADDLE_RIGHT_HORIZONTAL:
+			MOV AH,0Ch 					 ;set the configuration to writing a pixel
+			MOV AL,0Fh 					 ;choose white as color
+			MOV BH,00h 					 ;set the page number 
+			INT 10h    					 ;execute the configuration
+			
+			INC CX     					 ;CX = CX + 1
+			MOV AX,CX         			 ;CX - PADDLE_RIGHT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
+			SUB AX,PADDLE_RIGHT_X
+			CMP AX,PADDLE_WIDTH
+			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
+			
+			MOV CX,PADDLE_RIGHT_X		 ;the CX register goes back to the initial column
+			INC DX       				 ;we advance one line
+			
+			MOV AX,DX            	     ;DX - PADDLE_RIGHT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
+			SUB AX,PADDLE_RIGHT_Y
+			CMP AX,PADDLE_HEIGHT
+			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
+			
+		RET
+	DRAW_PADDLES ENDP
 
 MOVE_BALL PROC NEAR
     ; Move X position
