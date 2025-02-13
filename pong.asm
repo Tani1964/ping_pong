@@ -2,17 +2,47 @@
 .STACK 100
 
 .DATA
-    TIME_AUX DB 0
-
-    BALL_X DW 50    ; Initial X-coordinate (somewhere visible)
-    BALL_Y DW 50    ; Initial Y-coordinate
-    BALL_SIZE DW 10 ; Ball size (width and height)
-    BALL_VELOCITY_X DW 05H
-    BALL_VELOCITY_Y DW 02H
-
-    SCREEN_WIDTH DW 320
-    SCREEN_HEIGHT DW 200
-
+    
+	WINDOW_WIDTH DW 140h                 ;the width of the window (320 pixels)
+	WINDOW_HEIGHT DW 0C8h                ;the height of the window (200 pixels)
+	WINDOW_BOUNDS DW 6                   ;variable used to check collisions early
+	
+	TIME_AUX DB 0                        ;variable used when checking if the time has changed
+	GAME_ACTIVE DB 1                     ;is the game active? (1 -> Yes, 0 -> No (game over))
+	EXITING_GAME DB 0
+	WINNER_INDEX DB 0                    ;the index of the winner (1 -> player one, 2 -> player two)
+	CURRENT_SCENE DB 0                   ;the index of the current scene (0 -> main menu, 1 -> game)
+	
+	TEXT_PLAYER_ONE_POINTS DB '0','$'    ;text with the player one points
+	TEXT_PLAYER_TWO_POINTS DB '0','$'    ;text with the player two points
+	TEXT_GAME_OVER_TITLE DB 'GAME OVER','$' ;text with the game over menu title
+	TEXT_GAME_OVER_WINNER DB 'Player 0 won','$' ;text with the winner text
+	TEXT_GAME_OVER_PLAY_AGAIN DB 'Press R to play again','$' ;text with the game over play again message
+	TEXT_GAME_OVER_MAIN_MENU DB 'Press E to exit to main menu','$' ;text with the game over main menu message
+	TEXT_MAIN_MENU_TITLE DB 'MAIN MENU','$' ;text with the main menu title
+	TEXT_MAIN_MENU_SINGLEPLAYER DB 'SINGLEPLAYER - S KEY','$' ;text with the singleplayer message
+	TEXT_MAIN_MENU_MULTIPLAYER DB 'MULTIPLAYER - M KEY','$' ;text with the multiplayer message
+	TEXT_MAIN_MENU_EXIT DB 'EXIT GAME - E KEY','$' ;text with the exit game message
+	
+	BALL_ORIGINAL_X DW 0A0h              ;X position of the ball on the beginning of a game
+	BALL_ORIGINAL_Y DW 64h               ;Y position of the ball on the beginning of a game
+	BALL_X DW 0A0h                       ;current X position (column) of the ball
+	BALL_Y DW 64h                        ;current Y position (line) of the ball
+	BALL_SIZE DW 06h                     ;size of the ball (how many pixels does the ball have in width and height)
+	BALL_VELOCITY_X DW 05h               ;X (horizontal) velocity of the ball
+	BALL_VELOCITY_Y DW 02h               ;Y (vertical) velocity of the ball
+	
+	PADDLE_LEFT_X DW 0Ah                 ;current X position of the left paddle
+	PADDLE_LEFT_Y DW 55h                 ;current Y position of the left paddle
+	PLAYER_ONE_POINTS DB 0              ;current points of the left player (player one)
+	
+	PADDLE_RIGHT_X DW 130h               ;current X position of the right paddle
+	PADDLE_RIGHT_Y DW 55h                ;current Y position of the right paddle
+	PLAYER_TWO_POINTS DB 0             ;current points of the right player (player two)
+	
+	PADDLE_WIDTH DW 06h                  ;default paddle width
+	PADDLE_HEIGHT DW 25h                 ;default paddle height
+	PADDLE_VELOCITY DW 0Fh               ;default paddle velocity
 .CODE
 MAIN:
     ; Initialize Data Segment
@@ -71,11 +101,48 @@ DRAW_HORIZONTAL:
 DRAW_BALL ENDP
 
 MOVE_BALL PROC NEAR
+    ; Move X position
     MOV AX, BALL_VELOCITY_X
     ADD BALL_X, AX
 
+    ; Check if ball hits the left boundary
+    MOV AX, WINDOW_BOUNDS
+    CMP BALL_X, AX
+    JL NEG_VELOCITY_X
+
+    ; Check if ball hits the right boundary
+    MOV AX, WINDOW_WIDTH
+    SUB AX, WINDOW_BOUNDS
+    SUB AX, BALL_SIZE
+    CMP BALL_X, AX
+    JG NEG_VELOCITY_X
+
+    ; Move Y position
     MOV AX, BALL_VELOCITY_Y
-    ADD BALL_Y, AX 
+    ADD BALL_Y, AX
+
+    ; Check if ball hits the top boundary
+    MOV AX, WINDOW_BOUNDS
+    CMP BALL_Y, AX
+    JL NEG_VELOCITY_Y
+
+    ; Check if ball hits the bottom boundary
+    MOV AX, WINDOW_HEIGHT
+    SUB AX, WINDOW_BOUNDS
+    SUB AX, BALL_SIZE
+    CMP BALL_Y, AX
+    JG NEG_VELOCITY_Y
+
+    RET
+
+NEG_VELOCITY_X:
+    NEG BALL_VELOCITY_X
+    RET
+
+NEG_VELOCITY_Y:
+    NEG BALL_VELOCITY_Y
+    RET
+
 MOVE_BALL ENDP
 
 
