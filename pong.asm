@@ -3,9 +3,9 @@
 
 .DATA
     
-	WINDOW_WIDTH DW 140h                 ;the width of the window (320 pixels)
+	WINDOW_WIDTH DW 142h                 ;the width of the window (320 pixels)
 	WINDOW_HEIGHT DW 0C8h                ;the height of the window (200 pixels)
-	WINDOW_BOUNDS DW 6                   ;variable used to check collisions early
+	WINDOW_BOUNDS DW 1                  ;variable used to check collisions early
 	
 	TIME_AUX DB 0                        ;variable used when checking if the time has changed
 	GAME_ACTIVE DB 1                     ;is the game active? (1 -> Yes, 0 -> No (game over))
@@ -107,22 +107,23 @@ MOVE_BALL PROC NEAR
 
     ; Check if ball hits the left boundary
     MOV AX, WINDOW_BOUNDS
+    SUB AX, BALL_SIZE
     CMP BALL_X, AX
-    JL NEG_VELOCITY_X
+    JL RESET_POSITION
 
     ; Check if ball hits the right boundary
     MOV AX, WINDOW_WIDTH
     SUB AX, WINDOW_BOUNDS
     SUB AX, BALL_SIZE
     CMP BALL_X, AX
-    JG NEG_VELOCITY_X
+    JG RESET_POSITION
 
     ; Move Y position
     MOV AX, BALL_VELOCITY_Y
     ADD BALL_Y, AX
 
     ; Check if ball hits the top boundary
-    MOV AX, WINDOW_BOUNDS
+    MOV AX, WINDOW_BOUNDS 
     CMP BALL_Y, AX
     JL NEG_VELOCITY_Y
 
@@ -135,6 +136,11 @@ MOVE_BALL PROC NEAR
 
     RET
 
+RESET_POSITION:
+    CALL RESET_BALL_POSITION
+    RET
+
+
 NEG_VELOCITY_X:
     NEG BALL_VELOCITY_X
     RET
@@ -144,6 +150,20 @@ NEG_VELOCITY_Y:
     RET
 
 MOVE_BALL ENDP
+
+RESET_BALL_POSITION PROC NEAR        ;restart ball position to the original position
+		
+		MOV AX,BALL_ORIGINAL_X
+		MOV BALL_X,AX
+		
+		MOV AX,BALL_ORIGINAL_Y
+		MOV BALL_Y,AX
+		
+		NEG BALL_VELOCITY_X
+		NEG BALL_VELOCITY_Y
+		
+		RET
+	RESET_BALL_POSITION ENDP
 
 
 CLEAR_SCREEN PROC NEAR
