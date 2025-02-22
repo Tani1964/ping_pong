@@ -74,86 +74,6 @@ CHECK_TIME:
 
     JMP CHECK_TIME  ; Keep updating (infinite loop)
 
-DRAW_BALL PROC NEAR
-    ; Outer loop for Y-coordinate
-    MOV DX, BALL_Y
-DRAW_VERTICAL:
-    ; Inner loop for X-coordinate
-    MOV CX, BALL_X
-DRAW_HORIZONTAL:
-    ; Plot pixel at (CX, DX)
-    MOV AH, 0CH        ; Function: Write pixel
-    MOV AL, 0DH        ; Color: Light Purple
-    MOV BH, 00H        ; Video page
-    INT 10H
-
-    INC CX             ; Move to next X position
-    MOV AX, CX
-    SUB AX, BALL_X
-    CMP AX, BALL_SIZE
-    JL DRAW_HORIZONTAL ; Continue horizontal drawing
-
-    INC DX             ; Move to next Y position
-    MOV AX, DX
-    SUB AX, BALL_Y
-    CMP AX, BALL_SIZE
-    JL DRAW_VERTICAL   ; Continue vertical drawing
-
-    RET
-DRAW_BALL ENDP
-
-DRAW_PADDLES PROC NEAR
-		
-		MOV CX,PADDLE_LEFT_X 			 ;set the initial column (X)
-		MOV DX,PADDLE_LEFT_Y 			 ;set the initial line (Y)
-		
-		DRAW_PADDLE_LEFT_HORIZONTAL:
-			MOV AH,0Ch 					 ;set the configuration to writing a pixel
-			MOV AL,0Fh 					 ;choose white as color
-			MOV BH,00h 					 ;set the page number 
-			INT 10h    					 ;execute the configuration
-			
-			INC CX     				 	 ;CX = CX + 1
-			MOV AX,CX         			 ;CX - PADDLE_LEFT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
-			SUB AX,PADDLE_LEFT_X
-			CMP AX,PADDLE_WIDTH
-			JNG DRAW_PADDLE_LEFT_HORIZONTAL
-			
-			MOV CX,PADDLE_LEFT_X 		 ;the CX register goes back to the initial column
-			INC DX       				 ;we advance one line
-			
-			MOV AX,DX            	     ;DX - PADDLE_LEFT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
-			SUB AX,PADDLE_LEFT_Y
-			CMP AX,PADDLE_HEIGHT
-			JNG DRAW_PADDLE_LEFT_HORIZONTAL
-			
-			
-		MOV CX,PADDLE_RIGHT_X 			 ;set the initial column (X)
-		MOV DX,PADDLE_RIGHT_Y 			 ;set the initial line (Y)
-		
-		DRAW_PADDLE_RIGHT_HORIZONTAL:
-			MOV AH,0Ch 					 ;set the configuration to writing a pixel
-			MOV AL,0Fh 					 ;choose white as color
-			MOV BH,00h 					 ;set the page number 
-			INT 10h    					 ;execute the configuration
-			
-			INC CX     					 ;CX = CX + 1
-			MOV AX,CX         			 ;CX - PADDLE_RIGHT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
-			SUB AX,PADDLE_RIGHT_X
-			CMP AX,PADDLE_WIDTH
-			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
-			
-			MOV CX,PADDLE_RIGHT_X		 ;the CX register goes back to the initial column
-			INC DX       				 ;we advance one line
-			
-			MOV AX,DX            	     ;DX - PADDLE_RIGHT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
-			SUB AX,PADDLE_RIGHT_Y
-			CMP AX,PADDLE_HEIGHT
-			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
-			
-		RET
-	DRAW_PADDLES ENDP
-
 MOVE_BALL PROC NEAR
     ; Move X position
     MOV AX, BALL_VELOCITY_X
@@ -171,10 +91,16 @@ MOVE_BALL PROC NEAR
     SUB AX, BALL_SIZE
     CMP BALL_X, AX
     JG RESET_POSITION
+	JMP MOVE_BALL_VERTICALLY
 
-    ; Move Y position
-    MOV AX, BALL_VELOCITY_Y
-    ADD BALL_Y, AX
+	RESET_POSITION:
+    	CALL RESET_BALL_POSITION
+    	RET
+	
+	MOVE_BALL_VERTICALLY:
+    	; Move Y position
+    	MOV AX, BALL_VELOCITY_Y
+    	ADD BALL_Y, AX
 
     ; Check if ball hits the top boundary
     MOV AX, WINDOW_BOUNDS 
@@ -189,23 +115,62 @@ MOVE_BALL PROC NEAR
     JG NEG_VELOCITY_Y
 
 	; Check if ball hits the right paddle
+	MOV AX, BALL_X
+	ADD AX, BALL_SIZE
+	CMP AX, PADDLE_RIGHT_X
+	JNG CHECK_COLLISION_LEFT_PADDLE
 
+	MOV AX, PADDLE_RIGHT_X
+	ADD AX, PADDLE_WIDTH
+	CMP BALL_X, AX
+	JNL CHECK_COLLISION_LEFT_PADDLE
+
+	MOV AX, BALL_Y
+	ADD AX, BALL_SIZE
+	CMP AX, PADDLE_RIGHT_Y
+	JNG CHECK_COLLISION_LEFT_PADDLE
+
+	MOV AX, PADDLE_RIGHT_Y
+	ADD AX, PADDLE_HEIGHT
+	CMP BALL_Y, AX
+	JNL CHECK_COLLISION_LEFT_PADDLE
+
+	; IF IT REACHES THIS POINT THE BALL IS COLLIDING WITH RIGHT PADDLE
+	JMP NEG_VELOCITY_X
 	; Check if ball hits the left paddle
+	CHECK_COLLISION_LEFT_PADDLE:
+	MOV AX, BALL_X
+	ADD AX, BALL_SIZE
+	CMP AX, PADDLE_LEFT_X
+	JNG EXIT_COLLISION
 
-    RET
+	MOV AX, PADDLE_LEFT_X
+	ADD AX, PADDLE_WIDTH
+	CMP BALL_X, AX
+	JNL EXIT_COLLISION
 
-RESET_POSITION:
-    CALL RESET_BALL_POSITION
-    RET
+	MOV AX, BALL_Y
+	ADD AX, BALL_SIZE
+	CMP AX, PADDLE_LEFT_Y
+	JNG EXIT_COLLISION
 
+	MOV AX, PADDLE_LEFT_Y
+	ADD AX, PADDLE_HEIGHT
+	CMP BALL_Y, AX
+	JNL EXIT_COLLISION
 
-NEG_VELOCITY_X:
-    NEG BALL_VELOCITY_X
-    RET
+	JMP NEG_VELOCITY_X
 
-NEG_VELOCITY_Y:
-    NEG BALL_VELOCITY_Y
-    RET
+	NEG_VELOCITY_Y:
+	    NEG BALL_VELOCITY_Y
+	    RET
+
+	NEG_VELOCITY_X:
+	    NEG BALL_VELOCITY_X
+	    RET
+
+	EXIT_COLLISION:
+		RET
 
 MOVE_BALL ENDP
 
@@ -326,6 +291,88 @@ RESET_BALL_POSITION PROC NEAR        ;restart ball position to the original posi
 		
 		RET
 	RESET_BALL_POSITION ENDP
+
+
+DRAW_BALL PROC NEAR
+    ; Outer loop for Y-coordinate
+    MOV DX, BALL_Y
+DRAW_VERTICAL:
+    ; Inner loop for X-coordinate
+    MOV CX, BALL_X
+DRAW_HORIZONTAL:
+    ; Plot pixel at (CX, DX)
+    MOV AH, 0CH        ; Function: Write pixel
+    MOV AL, 0DH        ; Color: Light Purple
+    MOV BH, 00H        ; Video page
+    INT 10H
+
+    INC CX             ; Move to next X position
+    MOV AX, CX
+    SUB AX, BALL_X
+    CMP AX, BALL_SIZE
+    JL DRAW_HORIZONTAL ; Continue horizontal drawing
+
+    INC DX             ; Move to next Y position
+    MOV AX, DX
+    SUB AX, BALL_Y
+    CMP AX, BALL_SIZE
+    JL DRAW_VERTICAL   ; Continue vertical drawing
+
+    RET
+DRAW_BALL ENDP
+
+DRAW_PADDLES PROC NEAR
+		
+		MOV CX,PADDLE_LEFT_X 			 ;set the initial column (X)
+		MOV DX,PADDLE_LEFT_Y 			 ;set the initial line (Y)
+		
+		DRAW_PADDLE_LEFT_HORIZONTAL:
+			MOV AH,0Ch 					 ;set the configuration to writing a pixel
+			MOV AL,0Fh 					 ;choose white as color
+			MOV BH,00h 					 ;set the page number 
+			INT 10h    					 ;execute the configuration
+			
+			INC CX     				 	 ;CX = CX + 1
+			MOV AX,CX         			 ;CX - PADDLE_LEFT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
+			SUB AX,PADDLE_LEFT_X
+			CMP AX,PADDLE_WIDTH
+			JNG DRAW_PADDLE_LEFT_HORIZONTAL
+			
+			MOV CX,PADDLE_LEFT_X 		 ;the CX register goes back to the initial column
+			INC DX       				 ;we advance one line
+			
+			MOV AX,DX            	     ;DX - PADDLE_LEFT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
+			SUB AX,PADDLE_LEFT_Y
+			CMP AX,PADDLE_HEIGHT
+			JNG DRAW_PADDLE_LEFT_HORIZONTAL
+			
+			
+		MOV CX,PADDLE_RIGHT_X 			 ;set the initial column (X)
+		MOV DX,PADDLE_RIGHT_Y 			 ;set the initial line (Y)
+		
+		DRAW_PADDLE_RIGHT_HORIZONTAL:
+			MOV AH,0Ch 					 ;set the configuration to writing a pixel
+			MOV AL,0Fh 					 ;choose white as color
+			MOV BH,00h 					 ;set the page number 
+			INT 10h    					 ;execute the configuration
+			
+			INC CX     					 ;CX = CX + 1
+			MOV AX,CX         			 ;CX - PADDLE_RIGHT_X > PADDLE_WIDTH (Y -> We go to the next line,N -> We continue to the next column
+			SUB AX,PADDLE_RIGHT_X
+			CMP AX,PADDLE_WIDTH
+			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
+			
+			MOV CX,PADDLE_RIGHT_X		 ;the CX register goes back to the initial column
+			INC DX       				 ;we advance one line
+			
+			MOV AX,DX            	     ;DX - PADDLE_RIGHT_Y > PADDLE_HEIGHT (Y -> we exit this procedure,N -> we continue to the next line
+			SUB AX,PADDLE_RIGHT_Y
+			CMP AX,PADDLE_HEIGHT
+			JNG DRAW_PADDLE_RIGHT_HORIZONTAL
+			
+		RET
+	DRAW_PADDLES ENDP
+
 
 
 CLEAR_SCREEN PROC NEAR
